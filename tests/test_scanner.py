@@ -127,6 +127,21 @@ class FileAndTreeTests(unittest.TestCase):
         findings, _ = scan_path(self.root, ScanOptions(include_default_excluded=True))
         self.assertEqual(len(findings), 1)
 
+    def test_relative_target_is_resolved_against_repo_root(self):
+        fixtures = self.root / "tests"
+        fixtures.mkdir()
+        (fixtures / "a.py").write_text(
+            f"token = '{support.fake_secret(36, 'ghp_')}'", encoding="utf-8"
+        )
+        with support.chdir(self.root):
+            findings, _ = scan_path(Path("."), root=self.root)
+            self.assertEqual(len(findings), 1)
+            self.assertEqual(findings[0].path, "tests/a.py")
+
+            ignore = IgnoreList(["tests/"])
+            findings, _ = scan_path(Path("."), ignore=ignore, root=self.root)
+            self.assertEqual(findings, [])
+
     def test_dedupe_sorts_by_severity(self):
         low = scan_text(f'data = "{support.fake_secret(60)}"', "a.txt")
         high = scan_text(f"token = '{support.fake_secret(36, 'ghp_')}'", "b.txt")

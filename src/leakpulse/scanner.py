@@ -279,13 +279,18 @@ def scan_path(
     """Scan a file or directory tree. Returns (findings, files_scanned)."""
     options = options or ScanOptions()
     target = Path(target)
+    if not target.is_absolute():
+        target = target.resolve()
+    base = Path(root).resolve() if root is not None else target
     if target.is_file():
-        rel = str(target.relative_to(root)) if root else target.name
-        return scan_file(target, rel.replace(os.sep, "/"), options, ignore), 1
+        try:
+            rel = str(target.relative_to(base)).replace(os.sep, "/")
+        except ValueError:
+            rel = target.name
+        return scan_file(target, rel, options, ignore), 1
 
     findings: List[Finding] = []
     scanned = 0
-    base = target if root is None else root
     for dirpath, dirnames, filenames in os.walk(target):
         dirnames[:] = sorted(d for d in dirnames if d not in DEFAULT_EXCLUDED_DIRS)
         for filename in sorted(filenames):
