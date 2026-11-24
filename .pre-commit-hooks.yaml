@@ -1,0 +1,7 @@
+- id: leakpulse
+  name: leakpulse secret scan
+  description: Block commits that contain credentials
+  entry: leakpulse scan --staged --fail-on high --quiet
+  language: python
+  pass_filenames: false
+  always_run: true

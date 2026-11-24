@@ -1,0 +1,6 @@
+# Files that intentionally contain fake credentials for the test suite.
+tests/
+
+# Vendored code is out of scope for this repository.
+vendor/
+third_party/
