@@ -37,6 +37,25 @@ jobs:
       - name: Self scan
         run: PYTHONPATH=src python -m leakpulse scan . --history 0 --fail-on high --no-color
 
+  metadata:
+    name: validate action and workflow metadata
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Parse YAML files
+        run: |
+          python -m pip install --disable-pip-version-check pyyaml
+          python - <<'PY'
+          import glob, yaml
+          for path in ["action.yml", ".pre-commit-hooks.yaml"] + sorted(glob.glob(".github/workflows/*.yml")):
+              with open(path, encoding="utf-8") as fh:
+                  yaml.safe_load(fh)
+              print("ok", path)
+          PY
+
   build:
     name: build sdist + wheel
     runs-on: ubuntu-latest

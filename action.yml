@@ -1,0 +1,56 @@
+name: "LeakPulse Secret Scan"
+description: "Zero-dependency secret scan for worktrees and git history. Fails the job when leaking credentials are found."
+author: "StackPulse Lab"
+branding:
+  icon: "shield"
+  color: "purple"
+
+inputs:
+  path:
+    description: "File or directory to scan, relative to the repository root."
+    required: false
+    default: "."
+  history:
+    description: "Number of commits to scan; 0 disables history scanning."
+    required: false
+    default: "0"
+  fail-on:
+    description: "Lowest severity that makes the step fail: low, medium, high or never."
+    required: false
+    default: "high"
+  extra-args:
+    description: "Additional leakpulse scan arguments, e.g. \"--exclude 'docs/**' --json\"."
+    required: false
+    default: ""
+
+outputs:
+  exit-code:
+    description: "Scanner exit code: 0 clean, 1 findings at/above fail-on, 2 usage or git error."
+    value: "${{ steps.scan.outputs.exit-code }}"
+
+runs:
+  using: "composite"
+  steps:
+    - name: Install LeakPulse from the action checkout
+      shell: bash
+      run: |
+        python3 -m pip install --disable-pip-version-check --no-input "${GITHUB_ACTION_PATH}"
+
+    - name: Scan for secrets
+      id: scan
+      shell: bash
+      env:
+        LEAKPULSE_PATH: ${{ inputs.path }}
+        LEAKPULSE_HISTORY: ${{ inputs.history }}
+        LEAKPULSE_FAIL_ON: ${{ inputs.fail-on }}
+        LEAKPULSE_EXTRA_ARGS: ${{ inputs.extra-args }}
+      run: |
+        set +e
+        # shellcheck disable=SC2086
+        leakpulse scan "$LEAKPULSE_PATH" \
+          --history "$LEAKPULSE_HISTORY" \
+          --fail-on "$LEAKPULSE_FAIL_ON" \
+          --no-color $LEAKPULSE_EXTRA_ARGS
+        code=$?
+        echo "exit-code=$code" >> "$GITHUB_OUTPUT"
+        exit "$code"

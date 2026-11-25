@@ -1,7 +1,17 @@
 - id: leakpulse
-  name: leakpulse secret scan
-  description: Block commits that contain credentials
-  entry: leakpulse scan --staged --fail-on high --quiet
+  name: leakpulse (staged changes)
+  description: Block commits that stage likely credentials; redacted output only.
+  entry: leakpulse scan --staged --fail-on high --no-color
   language: python
+  types: [text]
+  pass_filenames: false
+  always_run: true
+
+- id: leakpulse-worktree
+  name: leakpulse (worktree, no history)
+  description: Scan the working tree without walking git history.
+  entry: leakpulse scan . --history 0 --fail-on high --no-color
+  language: python
+  types: [text]
   pass_filenames: false
   always_run: true

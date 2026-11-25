@@ -4,6 +4,27 @@ All notable changes to this project are documented here.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and
 the project adheres to [Semantic Versioning](https://semver.org/).
 
+## [0.3.0] - 2026-11-26
+
+### Added
+
+- Zero-config composite GitHub Action (`action.yml`): installs the scanner from the
+  pinned tag checkout and scans with `path`, `history`, `fail-on` and `extra-args`
+  inputs; exposes the scanner `exit-code` and fails the step on findings.
+- Expanded `.pre-commit-hooks.yaml`: visible (uncolored) output, text-only file types,
+  explicit `pass_filenames: false`/`always_run: true`, and a second
+  `leakpulse-worktree` hook for whole-tree scans without history.
+- `publish.yml` using PyPI Trusted Publishing (OIDC): tag-only trigger, tests before
+  build, tag/`__version__` consistency check, `id-token: write`, no stored API token.
+- `docs/distribution.md`: GitHub Action, pre-commit and PyPI setup, plus a comparison
+  of the three paths.
+- `tests/test_distribution.py`: cross-checks every CLI flag used by the action/hooks
+  against the argparse definitions and asserts the publish workflow stays OIDC-only.
+
+### Changed
+
+- README CI section now leads with the Action and documents both pre-commit hook ids.
+
 ## [0.2.0] - 2026-11-26
 
 ### Added
@@ -38,5 +59,6 @@ the project adheres to [Semantic Versioning](https://semver.org/).
 - Stdlib-only test suite (rules, entropy, scanner, git integration, CLI) and GitHub Actions CI
   on Python 3.9–3.13.
 
+[0.3.0]: https://github.com/stackpulse-lab/leakpulse/releases/tag/v0.3.0
 [0.2.0]: https://github.com/stackpulse-lab/leakpulse/releases/tag/v0.2.0
 [0.1.0]: https://github.com/stackpulse-lab/leakpulse/releases/tag/v0.1.0

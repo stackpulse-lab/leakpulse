@@ -40,6 +40,8 @@ leakpulse install-hook                 # 安装 pre-commit 钩子
 
 **v0.2.0 起内置国内生态规则**（共 28 条）：DeepSeek `sk-…`、阿里云 `LTAI…` AccessKey ID / Secret、腾讯云 `AKID…` SecretId / SecretKey、火山引擎 `AKLT…`、飞书/企微/钉钉群机器人 Webhook、爱发电 API Token。Webhook 只截取并脱敏 token 部分，报告里不会出现完整回调 URL。
 
+**开箱即用分发**：GitHub Action 一行 `uses: stackpulse-lab/leakpulse@v0.3.0`（无需 `setup-python`）；`pre-commit` 钩子 `id: leakpulse`；以及基于 OIDC 的 PyPI Trusted Publishing workflow（不存任何 API Token）。三种接入方式见 [`docs/distribution.md`](docs/distribution.md)。
+
 适用场景：个人项目推送前自检、CI 门禁、给团队补一层低成本的「防手滑」保险。它不是 SAST 的替代品，也不能判断密钥是否仍然有效——**发现即轮换**。
 
 ---
@@ -73,7 +75,9 @@ python run_tests.py
 PYTHONPATH=src python -m leakpulse scan .
 ```
 
-No PyPI release yet — `v0.2.0` is distributed from GitHub Releases.
+No PyPI release yet — `v0.3.0` is distributed from GitHub Releases. PyPI publishing is
+wired through Trusted Publishing (OIDC) and activates after the one-time project setup
+in [`docs/distribution.md`](docs/distribution.md); no API token is stored in the repo.
 
 ## Usage
 
@@ -106,7 +110,7 @@ leakpulse version
 ```json
 {
   "tool": "leakpulse",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "scanned": { "files": 84, "commits": 50 },
   "summary": { "total": 1, "high": 1, "medium": 0, "low": 0 },
   "findings": [
@@ -176,23 +180,33 @@ Lockfiles and minified assets are skipped by default because integrity hashes lo
 
 ## CI and pre-commit
 
-GitHub Actions:
+Zero-config GitHub Action (recommended — installs the scanner from the pinned tag,
+no `setup-python` step needed):
 
 ```yaml
 name: secrets
 on: [push, pull_request]
+permissions:
+  contents: read
 jobs:
   leakpulse:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
         with:
-          fetch-depth: 0          # history scanning needs commits
-      - uses: actions/setup-python@v5
+          fetch-depth: 0          # only needed when history > 0
+      - uses: stackpulse-lab/leakpulse@v0.3.0
         with:
-          python-version: "3.12"
-      - run: pipx install git+https://github.com/stackpulse-lab/leakpulse
-      - run: leakpulse scan . --history 100 --fail-on high --no-color
+          history: "0"            # set to 100+ to scan recent commits
+          fail-on: high
+```
+
+Inputs: `path`, `history`, `fail-on`, `extra-args`; output `exit-code`.
+A plain CLI step works too if you prefer explicit control:
+
+```bash
+pipx install git+https://github.com/stackpulse-lab/leakpulse
+leakpulse scan . --history 100 --fail-on high --no-color
 ```
 
 `pre-commit` framework (`.pre-commit-config.yaml`):
@@ -200,10 +214,15 @@ jobs:
 ```yaml
 repos:
   - repo: https://github.com/stackpulse-lab/leakpulse
-    rev: v0.2.0
+    rev: v0.3.0
     hooks:
-      - id: leakpulse
+      - id: leakpulse            # staged changes only
+      # - id: leakpulse-worktree # whole worktree, no history
 ```
+
+Maintainer-side PyPI publishing (tag → OIDC → PyPI, tests re-run, tag/version checked)
+lives in `.github/workflows/publish.yml`. Full setup for all three paths:
+[`docs/distribution.md`](docs/distribution.md).
 
 Native hook (no framework):
 
