@@ -68,6 +68,13 @@ RULES: Tuple[Rule, ...] = (
         severity="high",
     ),
     Rule(
+        "deepseek-key",
+        "DeepSeek API key (sk-…, same shape as OpenAI keys)",
+        _c(r"(?i)\bdeepseek[^\n]{0,40}?\b(sk-[A-Za-z0-9_-]{20,})\b"),
+        severity="high",
+        group=1,
+    ),
+    Rule(
         "openai-key",
         "OpenAI-compatible API key (sk-…)",
         _c(r"\bsk-(?:proj-)?[A-Za-z0-9_-]{20,}\b"),
@@ -102,6 +109,74 @@ RULES: Tuple[Rule, ...] = (
         "Google API key",
         _c(r"\bAIza[0-9A-Za-z_-]{35}\b"),
         severity="high",
+    ),
+    Rule(
+        "aliyun-access-key-id",
+        "Alibaba Cloud (Aliyun) AccessKey ID",
+        _c(r"\bLTAI[0-9A-Za-z]{16,20}\b"),
+        severity="high",
+    ),
+    Rule(
+        "aliyun-access-key-secret",
+        "Alibaba Cloud AccessKey secret (env-style assignment)",
+        _c(
+            r"(?i)\b(?:ALIBABA_CLOUD|ALIYUN|ALI_?CLOUD)_ACCESS_KEY_SECRET\b"
+            r"[^\S\n]*[:=][^\S\n]*[\"']?([A-Za-z0-9/+]{16,64})\b"
+        ),
+        severity="high",
+        group=1,
+        min_entropy=3.0,
+    ),
+    Rule(
+        "tencent-secret-id",
+        "Tencent Cloud SecretId",
+        _c(r"\bAKID[0-9A-Za-z]{16,32}\b"),
+        severity="high",
+    ),
+    Rule(
+        "tencent-secret-key",
+        "Tencent Cloud SecretKey (env-style assignment)",
+        _c(
+            r"(?i)\b(?:TENCENT|TENCENTCLOUD|TC)[_-]?(?:SECRET_?KEY|SECRETKEY)\b"
+            r"[^\S\n]*[:=][^\S\n]*[\"']?([A-Za-z0-9/+]{16,64})\b"
+        ),
+        severity="high",
+        group=1,
+        min_entropy=3.0,
+    ),
+    Rule(
+        "volcengine-access-key-id",
+        "Volcengine (火山引擎) AccessKey ID",
+        _c(r"\bAKLT[0-9A-Za-z]{16,44}\b"),
+        severity="high",
+    ),
+    Rule(
+        "feishu-webhook",
+        "Feishu/Lark bot webhook token",
+        _c(r"https://open\.(?:feishu\.cn|larksuite\.com)/open-apis/bot/v2/hook/([0-9a-fA-F-]{32,40})"),
+        severity="high",
+        group=1,
+    ),
+    Rule(
+        "wecom-webhook",
+        "WeCom (企业微信) group-robot webhook key",
+        _c(r"https://qyapi\.weixin\.qq\.com/cgi-bin/webhook/send\?key=([0-9a-fA-F-]{32,40})"),
+        severity="high",
+        group=1,
+    ),
+    Rule(
+        "dingtalk-webhook",
+        "DingTalk (钉钉) robot webhook access token",
+        _c(r"https://oapi\.dingtalk\.com/robot/send\?access_token=([0-9a-fA-F]{32,64})"),
+        severity="high",
+        group=1,
+    ),
+    Rule(
+        "afdian-token",
+        "Afdian (爱发电) API token",
+        _c(r"(?i)\bafdian[_-]?(?:token|api[_-]?key|secret)\b[^\S\n]*[:=][^\S\n]*[\"']?([0-9a-fA-F]{24,64})\b"),
+        severity="high",
+        group=1,
     ),
     Rule(
         "npm-token",

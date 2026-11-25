@@ -38,6 +38,8 @@ leakpulse install-hook                 # 安装 pre-commit 钩子
 
 支持以下忽略方式：仓库根目录 `.leakpulseignore`（gitignore 风格，支持 `!` 反选）、行内注释 `leakpulse:allow`、命令行 `--exclude 'vendor/**'`。
 
+**v0.2.0 起内置国内生态规则**（共 28 条）：DeepSeek `sk-…`、阿里云 `LTAI…` AccessKey ID / Secret、腾讯云 `AKID…` SecretId / SecretKey、火山引擎 `AKLT…`、飞书/企微/钉钉群机器人 Webhook、爱发电 API Token。Webhook 只截取并脱敏 token 部分，报告里不会出现完整回调 URL。
+
 适用场景：个人项目推送前自检、CI 门禁、给团队补一层低成本的「防手滑」保险。它不是 SAST 的替代品，也不能判断密钥是否仍然有效——**发现即轮换**。
 
 ---
@@ -71,7 +73,7 @@ python run_tests.py
 PYTHONPATH=src python -m leakpulse scan .
 ```
 
-No PyPI release yet — `v0.1.0` is distributed from GitHub Releases.
+No PyPI release yet — `v0.2.0` is distributed from GitHub Releases.
 
 ## Usage
 
@@ -104,7 +106,7 @@ leakpulse version
 ```json
 {
   "tool": "leakpulse",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "scanned": { "files": 84, "commits": 50 },
   "summary": { "total": 1, "high": 1, "medium": 0, "low": 0 },
   "findings": [
@@ -125,17 +127,23 @@ leakpulse version
 
 ## Detection rules
 
-18 high-signal rules plus an entropy heuristic. Full list: `leakpulse rules`.
+28 high-signal rules plus an entropy heuristic. Full list: `leakpulse rules`.
 
 | Rule | Severity | Catches |
 | --- | --- | --- |
 | `private-key-block` | high | PEM/PGP private key headers |
 | `aws-access-key-id` | high | `AKIA…` / `ASIA…` access key IDs |
 | `github-pat` / `github-token` | high | `github_pat_…`, `ghp_…`, `gho_…`, `ghs_…` |
+| `deepseek-key` | high | `sk-…` used with a `deepseek` config name |
 | `anthropic-key` / `openai-key` | high | `sk-ant-…`, `sk-…`, `sk-proj-…` |
 | `resend-key` / `sendgrid-key` | high | transactional-mail API keys |
 | `slack-token` / `stripe-key` | high | `xox…`, `sk_live_…`, `rk_live_…` |
 | `google-api-key` / `npm-token` / `pypi-token` | high | cloud and package-registry credentials |
+| `aliyun-access-key-id` / `aliyun-access-key-secret` | high | `LTAI…` and `ALIBABA_CLOUD_ACCESS_KEY_SECRET=…` |
+| `tencent-secret-id` / `tencent-secret-key` | high | `AKID…` and `TENCENTCLOUD_SECRET_KEY=…` |
+| `volcengine-access-key-id` | high | `AKLT…` |
+| `feishu-webhook` / `wecom-webhook` / `dingtalk-webhook` | high | bot webhook tokens (Feishu/Lark, WeCom, DingTalk) |
+| `afdian-token` | high | Afdian `AFDIAN_TOKEN=…` |
 | `discord-webhook` | high | webhook URLs with embedded token |
 | `url-basic-auth` | high | `scheme://user:pass@host` |
 | `bearer-token` | high | `Authorization: Bearer …` |
@@ -143,7 +151,8 @@ leakpulse version
 | `generic-secret-assignment` | medium | `password = "…"`, `api_key: "…"` |
 | `high-entropy-string` | medium | unknown random-looking 24+ char strings |
 
-Placeholders (`example`, `your_…`, `${VAR}`, `changeme`, repeated characters) and code references (`os.environ.get`, `process.env`) are suppressed to keep noise low.
+For webhook rules only the token is captured, so text and JSON reports never expose the
+full callback URL. Placeholders (`example`, `your_…`, `${VAR}`, `changeme`, repeated characters) and code references (`os.environ.get`, `process.env`) are suppressed to keep noise low.
 
 ## Ignoring findings
 
@@ -191,7 +200,7 @@ jobs:
 ```yaml
 repos:
   - repo: https://github.com/stackpulse-lab/leakpulse
-    rev: v0.1.0
+    rev: v0.2.0
     hooks:
       - id: leakpulse
 ```
