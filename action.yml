@@ -30,6 +30,10 @@ inputs:
     description: "Optional file to write the report to, e.g. leakpulse.sarif."
     required: false
     default: ""
+  baseline:
+    description: "Optional baseline JSON file; findings recorded there are suppressed, so only new secrets fail the job."
+    required: false
+    default: ""
 
 outputs:
   exit-code:
@@ -53,6 +57,7 @@ runs:
         LEAKPULSE_FAIL_ON: ${{ inputs.fail-on }}
         LEAKPULSE_FORMAT: ${{ inputs.format }}
         LEAKPULSE_OUTPUT: ${{ inputs.output }}
+        LEAKPULSE_BASELINE: ${{ inputs.baseline }}
         LEAKPULSE_EXTRA_ARGS: ${{ inputs.extra-args }}
       run: |
         set +e
@@ -67,6 +72,9 @@ runs:
         fi
         if [ -n "$LEAKPULSE_OUTPUT" ]; then
           args+=(--output "$LEAKPULSE_OUTPUT")
+        fi
+        if [ -n "$LEAKPULSE_BASELINE" ]; then
+          args+=(--baseline "$LEAKPULSE_BASELINE")
         fi
         # shellcheck disable=SC2086
         leakpulse "${args[@]}" $LEAKPULSE_EXTRA_ARGS

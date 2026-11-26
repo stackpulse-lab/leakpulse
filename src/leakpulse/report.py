@@ -22,6 +22,7 @@ def render_text(
     commits_scanned: int,
     elapsed: float,
     color: bool = True,
+    suppressed: int = 0,
 ) -> str:
     lines: List[str] = []
     for finding in findings:
@@ -52,6 +53,8 @@ def render_text(
     if commits_scanned:
         scope += f" and {commits_scanned} commit{'s' if commits_scanned != 1 else ''}"
     scope += f" in {elapsed:.2f}s."
+    if suppressed:
+        scope += f" {suppressed} known finding{'s' if suppressed != 1 else ''} suppressed by baseline."
 
     if color and total:
         summary = f"{BOLD}{summary}{RESET}"

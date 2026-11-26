@@ -59,6 +59,7 @@ def render_sarif(
     elapsed: float,
     exit_code: int,
     version: str,
+    baseline: Optional[Dict] = None,
 ) -> str:
     catalog = _rule_catalog()
     index_by_id = {rule["id"]: index for index, rule in enumerate(catalog)}
@@ -128,6 +129,10 @@ def render_sarif(
             }
         ],
     }
+    run = payload["runs"][0]
+    if baseline:
+        run["invocations"][0]["properties"]["baseline"] = dict(baseline)
+        run["properties"]["baseline"] = dict(baseline)
     return json.dumps(payload, ensure_ascii=False, indent=2)
 
 
@@ -163,6 +168,7 @@ def render_html(
     exit_code: int,
     version: str,
     generated_at: Optional[datetime] = None,
+    baseline: Optional[Dict] = None,
 ) -> str:
     moment = generated_at or datetime.now(timezone.utc)
     counts = _counts(findings)
@@ -197,6 +203,8 @@ def render_html(
     scope = f"{files_scanned} file(s)"
     if commits_scanned:
         scope += f", {commits_scanned} commit(s)"
+    if baseline:
+        scope += f", {baseline.get('suppressed', 0)} known finding(s) suppressed by {baseline.get('file', 'baseline')}"
     return """<!DOCTYPE html>
 <html lang="en">
 <head>

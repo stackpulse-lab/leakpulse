@@ -45,7 +45,7 @@ class ActionMetadataTests(unittest.TestCase):
 
     def test_declares_composite_action_with_documented_inputs(self):
         self.assertIn('using: "composite"', self.text)
-        for name in ("path", "history", "fail-on", "extra-args", "format", "output"):
+        for name in ("path", "history", "fail-on", "extra-args", "format", "output", "baseline"):
             self.assertRegex(self.text, rf"(?m)^  {re.escape(name)}:$")
         self.assertRegex(self.text, r"(?m)^outputs:$")
         self.assertRegex(self.text, r"(?m)^  exit-code:$")
@@ -61,6 +61,10 @@ class ActionMetadataTests(unittest.TestCase):
     def test_installs_from_the_pinned_action_checkout(self):
         self.assertIn('"${GITHUB_ACTION_PATH}"', self.text)
         self.assertNotIn("pip install leakpulse", self.text)
+
+    def test_baseline_input_is_forwarded_via_env(self):
+        self.assertIn("LEAKPULSE_BASELINE: ${{ inputs.baseline }}", self.text)
+        self.assertIn('--baseline "$LEAKPULSE_BASELINE"', self.text)
 
     def test_every_cli_flag_used_by_the_action_exists(self):
         known = _scan_flags()

@@ -10,7 +10,7 @@ from pathlib import Path
 from typing import List, Optional, Sequence
 
 from . import __version__
-from . import gitutil
+from . import baseline, gitutil
 from .exporters import render_html, render_sarif
 from .report import render_text
 from .rules import RULES, SEVERITY_RANK
@@ -80,6 +80,18 @@ def build_parser() -> argparse.ArgumentParser:
     scan.add_argument("--max-file-bytes", type=int, default=1_000_000, help="skip files larger than this")
     scan.add_argument("--no-ignore-file", action="store_true", help="ignore .leakpulseignore")
     scan.add_argument("--quiet", action="store_true", help="print nothing when clean")
+    scan.add_argument(
+        "--baseline",
+        metavar="FILE",
+        default=None,
+        help="suppress findings recorded in FILE; only new findings can fail the scan",
+    )
+    scan.add_argument(
+        "--write-baseline",
+        metavar="FILE",
+        default=None,
+        help="record current fingerprints as the accepted baseline (always exits 0)",
+    )
 
     rules = subparsers.add_parser("rules", help="list detection rules")
     rules.add_argument("--json", action="store_true", help="emit machine-readable JSON")
@@ -142,6 +154,9 @@ def _write_report(report: str, output: Optional[str]) -> bool:
 
 def run_scan(args: argparse.Namespace) -> int:
     started = time.time()
+    if args.baseline and args.write_baseline:
+        print("leakpulse: --baseline and --write-baseline are mutually exclusive", file=sys.stderr)
+        return 2
     report_format = args.format or ("json" if args.json else "text")
     if args.json and args.format and args.format != "json":
         print("leakpulse: --json conflicts with --format " + args.format, file=sys.stderr)
@@ -185,8 +200,30 @@ def run_scan(args: argparse.Namespace) -> int:
                 findings.append(finding)
 
     findings = dedupe(findings)
+    suppressed = 0
+    baseline_info = None
+    snapshot = False
+    if args.write_baseline:
+        try:
+            recorded = baseline.write_baseline(Path(args.write_baseline), findings, __version__)
+        except baseline.BaselineError as exc:
+            print(f"leakpulse: {exc}", file=sys.stderr)
+            return 2
+        print(f"leakpulse: recorded {recorded} fingerprint(s) in {args.write_baseline}", file=sys.stderr)
+        snapshot = True
+    elif args.baseline:
+        try:
+            accepted = baseline.load_baseline(Path(args.baseline))
+        except baseline.BaselineError as exc:
+            print(f"leakpulse: {exc}", file=sys.stderr)
+            return 2
+        findings, suppressed_findings = baseline.split_by_baseline(findings, accepted)
+        suppressed = len(suppressed_findings)
+        baseline_info = {"file": args.baseline, "suppressed": suppressed}
     elapsed = time.time() - started
-    code = _exit_code(findings, args.fail_on)
+    # Creating a snapshot is not a verdict about the repository, so it always
+    # succeeds once the file is written.
+    code = 0 if snapshot else _exit_code(findings, args.fail_on)
 
     if report_format == "json":
         payload = {
@@ -203,14 +240,22 @@ def run_scan(args: argparse.Namespace) -> int:
             "elapsed_seconds": round(elapsed, 3),
             "exit_code": code,
         }
+        if baseline_info:
+            payload["baseline"] = baseline_info
+        if snapshot:
+            payload["baseline_written"] = args.write_baseline
         return code if _write_report(json.dumps(payload, ensure_ascii=False, indent=2), args.output) else 2
 
     if report_format == "sarif":
-        report = render_sarif(findings, files_scanned, commits_scanned, elapsed, code, __version__)
+        report = render_sarif(
+            findings, files_scanned, commits_scanned, elapsed, code, __version__, baseline=baseline_info
+        )
         return code if _write_report(report, args.output) else 2
 
     if report_format == "html":
-        report = render_html(findings, files_scanned, commits_scanned, elapsed, code, __version__)
+        report = render_html(
+            findings, files_scanned, commits_scanned, elapsed, code, __version__, baseline=baseline_info
+        )
         return code if _write_report(report, args.output) else 2
 
     if args.quiet and not findings and args.output is None:
@@ -222,7 +267,7 @@ def run_scan(args: argparse.Namespace) -> int:
         and not args.no_color
         and os.environ.get("NO_COLOR") is None
     )
-    report = render_text(findings, files_scanned, commits_scanned, elapsed, color=color)
+    report = render_text(findings, files_scanned, commits_scanned, elapsed, color=color, suppressed=suppressed)
     return code if _write_report(report, args.output) else 2
 
 

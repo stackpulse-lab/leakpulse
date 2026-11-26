@@ -40,9 +40,11 @@ leakpulse install-hook                 # 安装 pre-commit 钩子
 
 **v0.2.0 起内置国内生态规则**（共 28 条）：DeepSeek `sk-…`、阿里云 `LTAI…` AccessKey ID / Secret、腾讯云 `AKID…` SecretId / SecretKey、火山引擎 `AKLT…`、飞书/企微/钉钉群机器人 Webhook、爱发电 API Token。Webhook 只截取并脱敏 token 部分，报告里不会出现完整回调 URL。
 
-**开箱即用分发**：GitHub Action 一行 `uses: stackpulse-lab/leakpulse@v0.4.0`（无需 `setup-python`）；`pre-commit` 钩子 `id: leakpulse`；以及基于 OIDC 的 PyPI Trusted Publishing workflow（不存任何 API Token）。三种接入方式见 [`docs/distribution.md`](docs/distribution.md)。
+**开箱即用分发**：GitHub Action 一行 `uses: stackpulse-lab/leakpulse@v0.5.0`（无需 `setup-python`）；`pre-commit` 钩子 `id: leakpulse`；以及基于 OIDC 的 PyPI Trusted Publishing workflow（不存任何 API Token）。三种接入方式见 [`docs/distribution.md`](docs/distribution.md)。
 
 **审计与 CI 报告**：`--format sarif` 输出 SARIF 2.1.0（可直接交给 GitHub Code Scanning），`--format html` 输出单文件、无脚本、无远程资源的审计报告，交给不做命令行评审的人看；用法与可直接复制的 workflow 见 [`docs/sarif.md`](docs/sarif.md)。
+
+**基线模式（v0.5.0）**：`--write-baseline leakpulse-baseline.json` 记录当前命中的指纹快照，`--baseline leakpulse-baseline.json` 只对**新增**密钥报错。基线文件只保存 `规则+路径+匹配值` 的 SHA-256 指纹，不含密钥也不含脱敏片段，可安全提交；适合「老仓库先接入 CI，再逐步清理历史问题」。详见 [`docs/baseline.md`](docs/baseline.md)。
 
 适用场景：个人项目推送前自检、CI 门禁、给团队补一层低成本的「防手滑」保险。它不是 SAST 的替代品，也不能判断密钥是否仍然有效——**发现即轮换**。
 
@@ -77,7 +79,7 @@ python run_tests.py
 PYTHONPATH=src python -m leakpulse scan .
 ```
 
-No PyPI release yet — `v0.4.0` is distributed from GitHub Releases. PyPI publishing is
+No PyPI release yet — `v0.5.0` is distributed from GitHub Releases. PyPI publishing is
 wired through Trusted Publishing (OIDC) and activates after the one-time project setup
 in [`docs/distribution.md`](docs/distribution.md); no API token is stored in the repo.
 
@@ -114,7 +116,7 @@ leakpulse version
 ```json
 {
   "tool": "leakpulse",
-  "version": "0.4.0",
+  "version": "0.5.0",
   "scanned": { "files": 84, "commits": 50 },
   "summary": { "total": 1, "high": 1, "medium": 0, "low": 0 },
   "findings": [
@@ -194,6 +196,22 @@ Command line: `--exclude 'docs/**' --exclude '*.snap'`.
 
 Lockfiles and minified assets are skipped by default because integrity hashes look random; pass `--all` to include them.
 
+### Baseline mode
+
+Legacy repositories rarely start clean. A baseline records the findings you have
+reviewed and accepted, so CI fails only on new ones:
+
+```bash
+leakpulse scan . --history 200 --write-baseline leakpulse-baseline.json  # exits 0
+leakpulse scan . --history 200 --baseline leakpulse-baseline.json        # new-only gate
+```
+
+The baseline holds SHA-256 fingerprints of `rule + path + match` — no credential and
+no masked fragment — so it can be committed and reviewed. Line moves stay suppressed;
+rotating a secret produces a new fingerprint and therefore a new finding. JSON, SARIF
+and HTML reports only contain new findings and record the suppressed count. Rollout,
+refresh and CI details: [`docs/baseline.md`](docs/baseline.md).
+
 ## CI and pre-commit
 
 Zero-config GitHub Action (recommended — installs the scanner from the pinned tag,
@@ -211,13 +229,13 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0          # only needed when history > 0
-      - uses: stackpulse-lab/leakpulse@v0.4.0
+      - uses: stackpulse-lab/leakpulse@v0.5.0
         with:
           history: "0"            # set to 100+ to scan recent commits
           fail-on: high
 ```
 
-Inputs: `path`, `history`, `fail-on`, `extra-args`, `format`, `output`; output `exit-code`.
+Inputs: `path`, `history`, `fail-on`, `extra-args`, `format`, `output`, `baseline`; output `exit-code`.
 For code scanning, set `format: sarif` and `output: leakpulse.sarif`, then upload with
 `github/codeql-action/upload-sarif` — see [`docs/sarif.md`](docs/sarif.md).
 A plain CLI step works too if you prefer explicit control:
@@ -232,7 +250,7 @@ leakpulse scan . --history 100 --fail-on high --no-color
 ```yaml
 repos:
   - repo: https://github.com/stackpulse-lab/leakpulse
-    rev: v0.4.0
+    rev: v0.5.0
     hooks:
       - id: leakpulse            # staged changes only
       # - id: leakpulse-worktree # whole worktree, no history

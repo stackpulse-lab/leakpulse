@@ -4,6 +4,33 @@ All notable changes to this project are documented here.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and
 the project adheres to [Semantic Versioning](https://semver.org/).
 
+## [0.5.0] - 2026-11-27
+
+### Added
+
+- **Baseline mode** (`leakpulse/baseline.py`): `scan --write-baseline FILE`
+  snapshots the fingerprints of current findings (always exits `0`), and
+  `scan --baseline FILE` suppresses those known findings so CI fails only on
+  newly introduced secrets. Fingerprints are SHA-256 hashes of rule id, path and
+  matched value — no credential, not even a masked fragment, is written to the
+  baseline file. Line moves keep a finding suppressed; changing the secret
+  (rotation) makes it new again.
+- JSON output adds `baseline: {file, suppressed}` (and `baseline_written` when
+  snapshotting); SARIF carries the same info in `runs[0].properties.baseline`;
+  the text report names how many known findings were suppressed.
+- `action.yml`: new `baseline` input, so a repository can adopt the Action
+  without turning existing legacy findings into a permanently red job.
+- `docs/baseline.md`: rollout recipe (write → review → commit → enable in CI),
+  refresh flow after rotation, and the security rationale for hashes only.
+- `tests/test_baseline.py`: 13 tests for fingerprint behaviour, document
+  validation, write/load roundtrip, CLI exit codes, line moves, mutual
+  exclusion and suppressed-free SARIF/HTML.
+
+### Changed
+
+- README (zh/en) documents baseline mode and pins examples to `v0.5.0`;
+  `docs/distribution.md` gains the `baseline` input row.
+
 ## [0.4.0] - 2026-11-26
 
 ### Added
