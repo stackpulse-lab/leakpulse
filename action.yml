@@ -19,7 +19,15 @@ inputs:
     required: false
     default: "high"
   extra-args:
-    description: "Additional leakpulse scan arguments, e.g. \"--exclude 'docs/**' --json\"."
+    description: "Additional leakpulse scan arguments, e.g. \"--exclude 'docs/**'\"."
+    required: false
+    default: ""
+  format:
+    description: "Report format: text, json, sarif (GitHub code scanning) or html."
+    required: false
+    default: "text"
+  output:
+    description: "Optional file to write the report to, e.g. leakpulse.sarif."
     required: false
     default: ""
 
@@ -43,14 +51,25 @@ runs:
         LEAKPULSE_PATH: ${{ inputs.path }}
         LEAKPULSE_HISTORY: ${{ inputs.history }}
         LEAKPULSE_FAIL_ON: ${{ inputs.fail-on }}
+        LEAKPULSE_FORMAT: ${{ inputs.format }}
+        LEAKPULSE_OUTPUT: ${{ inputs.output }}
         LEAKPULSE_EXTRA_ARGS: ${{ inputs.extra-args }}
       run: |
         set +e
+        args=(
+          scan "$LEAKPULSE_PATH"
+          --history "$LEAKPULSE_HISTORY"
+          --fail-on "$LEAKPULSE_FAIL_ON"
+          --no-color
+        )
+        if [ "$LEAKPULSE_FORMAT" != "text" ]; then
+          args+=(--format "$LEAKPULSE_FORMAT")
+        fi
+        if [ -n "$LEAKPULSE_OUTPUT" ]; then
+          args+=(--output "$LEAKPULSE_OUTPUT")
+        fi
         # shellcheck disable=SC2086
-        leakpulse scan "$LEAKPULSE_PATH" \
-          --history "$LEAKPULSE_HISTORY" \
-          --fail-on "$LEAKPULSE_FAIL_ON" \
-          --no-color $LEAKPULSE_EXTRA_ARGS
+        leakpulse "${args[@]}" $LEAKPULSE_EXTRA_ARGS
         code=$?
         echo "exit-code=$code" >> "$GITHUB_OUTPUT"
         exit "$code"

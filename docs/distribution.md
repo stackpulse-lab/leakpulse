@@ -15,7 +15,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: stackpulse-lab/leakpulse@v0.3.0
+      - uses: stackpulse-lab/leakpulse@v0.4.0
         with:
           path: "."
           history: "0"     # set to 100+ to scan recent commits
@@ -31,6 +31,8 @@ is exactly the tag you reference. Inputs:
 | `history` | `0` | Commits to scan; `0` disables history (fastest) |
 | `fail-on` | `high` | `low`, `medium`, `high` or `never` |
 | `extra-args` | empty | Extra `leakpulse scan` flags, e.g. `--exclude 'docs/**'` |
+| `format` | `text` | `text`, `json`, `sarif` or `html` |
+| `output` | empty | Report file to write, e.g. `leakpulse.sarif` |
 
 Output `exit-code` mirrors the scanner: `0` clean, `1` findings at/above threshold,
 `2` usage or git error. The step fails on non-zero by design; use
@@ -46,7 +48,7 @@ Output `exit-code` mirrors the scanner: `0` clean, `1` findings at/above thresho
 ```yaml
 repos:
   - repo: https://github.com/stackpulse-lab/leakpulse
-    rev: v0.3.0
+    rev: v0.4.0
     hooks:
       - id: leakpulse            # staged changes only, fastest
       # - id: leakpulse-worktree # whole worktree, no history
@@ -90,3 +92,9 @@ publisher is promoted automatically.
 Defense in depth: pre-commit stops most accidents locally, the Action catches
 contributions from machines without hooks, and history scanning (`history: 100`)
 catches anything that slipped through before the gate existed.
+
+## 4. SARIF / HTML reports
+
+`--format sarif` targets GitHub code scanning and any SARIF 2.1.0 consumer;
+`--format html` writes a self-contained audit report for humans. Both are documented,
+with a copy-paste code-scanning workflow, in [`sarif.md`](sarif.md).

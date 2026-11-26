@@ -45,7 +45,7 @@ class ActionMetadataTests(unittest.TestCase):
 
     def test_declares_composite_action_with_documented_inputs(self):
         self.assertIn('using: "composite"', self.text)
-        for name in ("path", "history", "fail-on", "extra-args"):
+        for name in ("path", "history", "fail-on", "extra-args", "format", "output"):
             self.assertRegex(self.text, rf"(?m)^  {re.escape(name)}:$")
         self.assertRegex(self.text, r"(?m)^outputs:$")
         self.assertRegex(self.text, r"(?m)^  exit-code:$")
@@ -64,8 +64,8 @@ class ActionMetadataTests(unittest.TestCase):
 
     def test_every_cli_flag_used_by_the_action_exists(self):
         known = _scan_flags()
-        invocation = self.text.split('leakpulse scan "$LEAKPULSE_PATH"', 1)[1].split("code=$?", 1)[0]
-        used = set(FLAG_RE.findall(invocation))
+        block = self.text.split("args=(", 1)[1].split("code=$?", 1)[0]
+        used = set(FLAG_RE.findall(block))
         self.assertTrue(used, "action.yml does not invoke any CLI flags")
         self.assertEqual(sorted(used - known), [], f"unknown flags in action.yml: {sorted(used - known)}")
 

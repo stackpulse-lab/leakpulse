@@ -4,6 +4,32 @@ All notable changes to this project are documented here.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and
 the project adheres to [Semantic Versioning](https://semver.org/).
 
+## [0.4.0] - 2026-11-26
+
+### Added
+
+- `scan --format {text,json,sarif,html}` and `--output FILE` for shareable reports.
+  `--json` stays as an alias for `--format json`; `--quiet` still suppresses clean
+  text output, and an explicit `--output` is always written.
+- SARIF 2.1.0 export (`leakpulse/exporters.py`): all 28 regex rules plus
+  `high-entropy-string` in `tool.driver.rules`, severity mapped to
+  `error`/`warning`/`note`, percent-encoded repo-relative artifact URIs,
+  `partialFingerprints.leakpulse/v1`, and masked match text only.
+- Self-contained HTML audit report: inline CSS, no scripts or remote assets, escaped
+  paths/descriptions, masked matches.
+- `docs/sarif.md`: GitHub code scanning workflow (`upload-sarif`), SARIF shape,
+  HTML usage and a GitLab CI artifact example.
+- `action.yml`: new `format` and `output` inputs; existing inputs and `exit-code`
+  output are unchanged.
+- `tests/test_reports.py`: 15 tests covering SARIF structure/levels/URI encoding/
+  redaction/fingerprints, HTML escaping/no-remote-assets, and CLI format/output
+  behavior including the `--json` conflict.
+
+### Changed
+
+- README documents the new report formats in both languages, and pins Action /
+  pre-commit examples to `v0.4.0`.
+
 ## [0.3.0] - 2026-11-26
 
 ### Added

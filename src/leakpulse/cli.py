@@ -11,6 +11,7 @@ from typing import List, Optional, Sequence
 
 from . import __version__
 from . import gitutil
+from .exporters import render_html, render_sarif
 from .report import render_text
 from .rules import RULES, SEVERITY_RANK
 from .scanner import (
@@ -57,6 +58,13 @@ def build_parser() -> argparse.ArgumentParser:
         help="scan the last N commits (default: 50; 0 disables history scanning)",
     )
     scan.add_argument("--json", action="store_true", help="emit machine-readable JSON")
+    scan.add_argument(
+        "--format",
+        choices=["text", "json", "sarif", "html"],
+        default=None,
+        help="report format: text (default), json, sarif for code scanning, html for audits",
+    )
+    scan.add_argument("--output", metavar="FILE", default=None, help="write the report to FILE instead of stdout")
     scan.add_argument("--no-color", action="store_true", help="disable ANSI colors")
     scan.add_argument("--no-entropy", action="store_true", help="disable high-entropy detection")
     scan.add_argument("--entropy-threshold", type=float, default=3.6, help="entropy threshold (default: 3.6)")
@@ -115,8 +123,29 @@ def _scan_staged(root: Path, options: ScanOptions, ignore: IgnoreList):
     return findings, files_scanned
 
 
+def _write_report(report: str, output: Optional[str]) -> bool:
+    """Emit a rendered report to stdout or to a UTF-8 file."""
+    if output is None:
+        print(report)
+        return True
+    path = Path(output)
+    try:
+        if not path.parent.exists():
+            path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(report if report.endswith("\n") else report + "\n", encoding="utf-8")
+    except OSError as exc:
+        print(f"leakpulse: cannot write {path}: {exc}", file=sys.stderr)
+        return False
+    print(f"leakpulse: wrote {path}", file=sys.stderr)
+    return True
+
+
 def run_scan(args: argparse.Namespace) -> int:
     started = time.time()
+    report_format = args.format or ("json" if args.json else "text")
+    if args.json and args.format and args.format != "json":
+        print("leakpulse: --json conflicts with --format " + args.format, file=sys.stderr)
+        return 2
     base = Path.cwd()
     options = ScanOptions(
         entropy=not args.no_entropy,
@@ -159,7 +188,7 @@ def run_scan(args: argparse.Namespace) -> int:
     elapsed = time.time() - started
     code = _exit_code(findings, args.fail_on)
 
-    if args.json:
+    if report_format == "json":
         payload = {
             "tool": "leakpulse",
             "version": __version__,
@@ -174,15 +203,27 @@ def run_scan(args: argparse.Namespace) -> int:
             "elapsed_seconds": round(elapsed, 3),
             "exit_code": code,
         }
-        print(json.dumps(payload, ensure_ascii=False, indent=2))
+        return code if _write_report(json.dumps(payload, ensure_ascii=False, indent=2), args.output) else 2
+
+    if report_format == "sarif":
+        report = render_sarif(findings, files_scanned, commits_scanned, elapsed, code, __version__)
+        return code if _write_report(report, args.output) else 2
+
+    if report_format == "html":
+        report = render_html(findings, files_scanned, commits_scanned, elapsed, code, __version__)
+        return code if _write_report(report, args.output) else 2
+
+    if args.quiet and not findings and args.output is None:
         return code
 
-    if args.quiet and not findings:
-        return code
-
-    color = sys.stdout.isatty() and not args.no_color and os.environ.get("NO_COLOR") is None
-    print(render_text(findings, files_scanned, commits_scanned, elapsed, color=color))
-    return code
+    color = (
+        args.output is None
+        and sys.stdout.isatty()
+        and not args.no_color
+        and os.environ.get("NO_COLOR") is None
+    )
+    report = render_text(findings, files_scanned, commits_scanned, elapsed, color=color)
+    return code if _write_report(report, args.output) else 2
 
 
 def run_rules(args: argparse.Namespace) -> int:
