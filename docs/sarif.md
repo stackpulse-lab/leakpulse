@@ -91,7 +91,7 @@ Any CI that can run a command can archive the HTML or SARIF file:
 leakpulse:
   image: python:3.12
   script:
-    - pip install git+https://github.com/stackpulse-lab/leakpulse
+    - pip install leakpulse
     - leakpulse scan . --history 0 --format sarif --output leakpulse.sarif || true
   artifacts:
     when: always

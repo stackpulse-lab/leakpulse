@@ -3,6 +3,9 @@
 LeakPulse ships three integration paths. All of them run the same local scanner —
 no account, no upload, no telemetry.
 
+Users can also install the CLI directly from PyPI (`pip install leakpulse`, v0.5.0+);
+the Action and pre-commit hook below pin an exact tag instead.
+
 ## 1. GitHub Action (zero config)
 
 ```yaml

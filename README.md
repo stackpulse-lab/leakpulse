@@ -4,7 +4,8 @@
 Catch `ghp_…`, `sk-…`, private keys and high-entropy tokens before they leave your laptop.
 
 [![CI](https://github.com/stackpulse-lab/leakpulse/actions/workflows/ci.yml/badge.svg)](https://github.com/stackpulse-lab/leakpulse/actions/workflows/ci.yml)
-[![PyPI](https://img.shields.io/badge/python-3.9%2B-blue?logo=python&logoColor=white)](https://www.python.org/)
+[![PyPI](https://img.shields.io/pypi/v/leakpulse?logo=pypi&logoColor=white)](https://pypi.org/project/leakpulse/)
+[![Python 3.9+](https://img.shields.io/badge/python-3.9%2B-blue?logo=python&logoColor=white)](https://www.python.org/)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 [![Dependencies: none](https://img.shields.io/badge/dependencies-0-brightgreen)](pyproject.toml)
 
@@ -29,7 +30,8 @@ MEDIUM generic-secret-assignment  deploy/prod.env:5  Tr0u****9xyz   Secret-like 
 它只做本地静态检查：**不联网、不上传、无遥测**，命中结果默认脱敏输出，避免二次泄露。
 
 ```bash
-pipx install git+https://github.com/stackpulse-lab/leakpulse
+pip install leakpulse                  # PyPI（v0.5.0+，推荐）
+# 也可从源码隔离安装：pipx install git+https://github.com/stackpulse-lab/leakpulse
 leakpulse scan .                       # 工作区 + 最近 50 个提交
 leakpulse scan --staged                # 只看暂存区（pre-commit）
 leakpulse scan . --history 200 --json  # 输出 JSON 给 CI
@@ -45,6 +47,8 @@ leakpulse install-hook                 # 安装 pre-commit 钩子
 **审计与 CI 报告**：`--format sarif` 输出 SARIF 2.1.0（可直接交给 GitHub Code Scanning），`--format html` 输出单文件、无脚本、无远程资源的审计报告，交给不做命令行评审的人看；用法与可直接复制的 workflow 见 [`docs/sarif.md`](docs/sarif.md)。
 
 **基线模式（v0.5.0）**：`--write-baseline leakpulse-baseline.json` 记录当前命中的指纹快照，`--baseline leakpulse-baseline.json` 只对**新增**密钥报错。基线文件只保存 `规则+路径+匹配值` 的 SHA-256 指纹，不含密钥也不含脱敏片段，可安全提交；适合「老仓库先接入 CI，再逐步清理历史问题」。详见 [`docs/baseline.md`](docs/baseline.md)。
+
+**实战文章（含可复现的退出码）**：[《存量仓库接入密钥扫描：基线模式 10 分钟落地》](https://github.com/stackpulse-lab/stackpulse-lab/blob/main/articles/legacy-repo-baseline.zh.md) 讲清「先评审存量、再只拦新增」的接入顺序与防基线腐烂约定；命中之后的轮换、取证与影响面评估见 [《密钥泄露后的 10 分钟》](https://github.com/stackpulse-lab/stackpulse-lab/blob/main/articles/secret-leak-10min.zh.md)。英文版见 [`articles/`](https://github.com/stackpulse-lab/stackpulse-lab/tree/main/articles)。
 
 适用场景：个人项目推送前自检、CI 门禁、给团队补一层低成本的「防手滑」保险。它不是 SAST 的替代品，也不能判断密钥是否仍然有效——**发现即轮换**。
 
@@ -65,12 +69,14 @@ Because the good ones are either heavy (Go binaries, container images, cloud acc
 Requires Python 3.9+ and (for history/staged modes) git.
 
 ```bash
-# Isolated install from the repository
+# PyPI (recommended)
+pip install leakpulse
+# or, isolated from the repository
 pipx install git+https://github.com/stackpulse-lab/leakpulse
 
 # or into a virtualenv
 python -m venv .venv && . .venv/bin/activate
-pip install git+https://github.com/stackpulse-lab/leakpulse
+pip install leakpulse
 
 # development
 git clone https://github.com/stackpulse-lab/leakpulse
@@ -79,9 +85,9 @@ python run_tests.py
 PYTHONPATH=src python -m leakpulse scan .
 ```
 
-No PyPI release yet — `v0.5.0` is distributed from GitHub Releases. PyPI publishing is
-wired through Trusted Publishing (OIDC) and activates after the one-time project setup
-in [`docs/distribution.md`](docs/distribution.md); no API token is stored in the repo.
+`v0.5.0+` is published on [PyPI](https://pypi.org/project/leakpulse/) and released from GitHub
+with wheel + sdist. Publishing goes through Trusted Publishing (OIDC) on `v*` tags; no API
+token is stored in the repo. Setup details: [`docs/distribution.md`](docs/distribution.md).
 
 ## Usage
 
@@ -212,6 +218,10 @@ rotating a secret produces a new fingerprint and therefore a new finding. JSON, 
 and HTML reports only contain new findings and record the suppressed count. Rollout,
 refresh and CI details: [`docs/baseline.md`](docs/baseline.md).
 
+Field notes with real exit codes: [Adopting a secret scanner in a legacy repo](https://github.com/stackpulse-lab/stackpulse-lab/blob/main/articles/legacy-repo-baseline.en.md)
+walks through the same flow (clean history → baseline → new finding → rotate → re-report).
+For what to do after a hit, see [The first 10 minutes after a secret leak](https://github.com/stackpulse-lab/stackpulse-lab/blob/main/articles/secret-leak-10min.en.md).
+
 ## CI and pre-commit
 
 Zero-config GitHub Action (recommended — installs the scanner from the pinned tag,
@@ -241,7 +251,7 @@ For code scanning, set `format: sarif` and `output: leakpulse.sarif`, then uploa
 A plain CLI step works too if you prefer explicit control:
 
 ```bash
-pipx install git+https://github.com/stackpulse-lab/leakpulse
+pip install leakpulse
 leakpulse scan . --history 100 --fail-on high --no-color
 ```
 
@@ -286,6 +296,8 @@ There is no network access anywhere in the codebase. Scan results stay on your m
 - Finding a secret does not prove it is live, and *not* finding one does not prove the repo is clean.
 
 When you do find one: **rotate/revoke first**, then remove it from history if the repository is public.
+The 10-minute checklist (rotation order, history forensics, blast-radius assessment) is in
+[The first 10 minutes after a secret leak](https://github.com/stackpulse-lab/stackpulse-lab/blob/main/articles/secret-leak-10min.en.md).
 
 ## Development
 
